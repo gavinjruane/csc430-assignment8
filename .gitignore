@@ -1,0 +1,184 @@
+## SML/NJ stuff ##
+.cm/
+
+## C/C++ stuff ##
+
+# Prerequisites
+*.d
+.depend
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+## LaTeX stuff
+
+# Core latex/pdflatex auxiliary files:
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+.*.lb
+
+# Generated if empty string is given at "Please type another file name for output:"
+.pdf
+
+# Bibliography auxiliary files (bibtex/biblatex/biber):
+*.bbl
+*.bcf
+*.blg
+*-blx.aux
+*-blx.bib
+*.run.xml
+
+# Build tool auxiliary files:
+*.fdb_latexmk
+*.synctex
+*.synctex(busy)
+*.synctex.gz
+*.synctex.gz(busy)
+*.pdfsync
+
+# Build tool directories for auxiliary files
+# latexrun
+latex.out/
+
+## Other stuff ##
+*.tgz
+*.swp
+
+# macOS finder
+.DS_Store
+
+# autoconf files
+configure
+configure~
+config.status
+autom4te.cache
+
+# ml-yacc description files
+#
+*.grm.desc
+
+# project-specific files
+sml.boot.*
+sml.bin.*
+/bin/
+/lib/
+llvm/build/
+llvm/.cache
+runtime/bin/
+runtime/c-libs/posix-filesys/ml_pathconf.h
+runtime/c-libs/posix-procenv/ml_sysconf.h
+runtime/include/asdl/
+runtime/include/cfg.hpp
+runtime/include/cm-registers.hpp
+runtime/include/context.hpp
+runtime/include/lambda-var.hpp
+runtime/include/llvm-c/
+runtime/include/llvm/
+runtime/include/object-file.hpp
+runtime/include/objfile-stream.hpp
+runtime/include/smlnj/
+runtime/include/target-info.hpp
+runtime/lib/
+runtime/objs/gen-offsets
+runtime/objs/gen-sizes
+runtime/objs/gen-unix-signals
+runtime/objs/gen-unix-sigtbl
+runtime/objs/ml-sizes.h
+runtime/objs/mlstate-offsets.h
+runtime/objs/prim.s
+runtime/objs/run.amd64-darwin
+runtime/objs/system-signals.h
+runtime/objs/unix-sigtbl.c
+runtime/share/
+system/sml.amd64-*
+system/sml.arm64-*
+tools/asdl/**/Makefile
+tools/asdl/bin/
+tools/asdl/config/config_h.in
+tools/asdl/src/asdlgen/back-end/sml/fragments.gmk
+tools/asdl/src/asdlgen/back-end/sml/fragments.sml
+tools/asdl/src/asdlgen/common/config.sml
+tools/asdl/src/gen/fragments/mkfrags.sh
+tools/asdl/src/gen/fragments/mkmk.sh
+tools/asdl/src/lib/cpp/include/asdl/config.h
+tools/cfgc/cfgc
+doc/**/Makefile
+doc/doc
+doc/mk/doc-rules.gmk
+doc/src/changelog/HISTORY.html
+doc/src/manuals/asdl/manual.pdf
+doc/src/manuals/cm/btcomp.pdf
+doc/src/manuals/cm/manual.pdf
+doc/src/manuals/ml-burg/doc.pdf
+doc/src/manuals/ml-lex/ml-lex.pdf
+doc/src/manuals/ml-lpt/manual.pdf
+doc/src/manuals/ml-yacc/mlyacc.pdf
+doc/src/manuals/nlffi/nlffi.pdf
+doc/src/release-notes/110.86-README.html
+doc/src/release-notes/110.87-README.html
+doc/src/release-notes/110.88-README.html
+doc/src/release-notes/110.89-README.html
+doc/src/release-notes/110.90-README.html
+doc/src/release-notes/110.91-README.html
+doc/src/release-notes/110.92-README.html
+doc/src/release-notes/110.93-README.html
+doc/src/release-notes/110.94-README.html
+doc/src/release-notes/110.95-README.html
+doc/src/release-notes/110.96-README.html
+doc/src/release-notes/110.97-README.html
+doc/src/release-notes/110.98-README.html
+doc/src/release-notes/110.98.1-README.html
+doc/src/release-notes/110.99*-README.html
+doc/src/release-notes/20*-README.html
+doc/src/smlnj-lib/bin/
+doc/src/smlnj-lib/src/index.json
+doc/src/smlnj-lib/tools/bin/
+doc/src/smlnj-lib/tools/gen-pages/config.sml
+doc/src/man/*.1
+doc/src/man/*.7
+doc/src/**/*.html
+package/macos/*.pkg
+*.pkl
+v-amd64-*
+v-arm64-*
+*.amd64-darwin
+*.amd64-linux
+*.arm64-darwin
