@@ -22,18 +22,24 @@ NumV of int
                | StrV of string
 
 
-(* fun interp =  *)
-  (* case expr of *)
-  (*      NumC n =>  *)
+(* Given a VEBG4 expression, evaluate it eagerly into its value *)
+fun interp (expr : ExprC) : Value =
+  case expr of
+  (NumC n) => (NumV n)
+  | (StrC s) => (StrV s)
+  | _ => raise Fail ( "Unhandled Expression in interp." ); 
+  
 
 (* Recreating racket testing functions *)
 (* Basic test case . Checks if an actual matches expected and prints pass/fail depending on result. *)
-fun check_equal ( name, actual, expected ) = 
+(* Takes a tuple  *)
+fun check_equal ( name, ( actual : Value ), ( expected : Value) ) : unit = 
   (print 
-  ("check-equal?: " ^ name ^ ": " ^ 
+  ("check_equal: " ^ name ^ ": " ^ 
   (if expected = actual then "\027[32mPASS\027[0m\n" else "\027[31mFAIL\027[0m\n")));
 
-check_equal ( "test", 1, 2 );
-check_equal ( "test2", 1, 1 );
+(* interp tests *)
+check_equal ("basic int", (interp (NumC 1)), (NumV 1));
+check_equal ("basic string", (interp (StrC "hi")), (StrV "hi"));
 
 OS.Process.exit OS.Process.success;
