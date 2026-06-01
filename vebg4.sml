@@ -7,6 +7,9 @@ datatype Value =
 NumV of int
                | StrV of string;
 
+(* An environment is a list of ( string, value ) tuples *)
+type Env = (string * Value) list 
+
 (* Invokes the SExp parse function to convert a string into an SExp type *)
 fun str_to_sexp (str : string) : SExp.value list =
   SExpParser.parse (TextIO.openString str)
@@ -67,7 +70,7 @@ fun check_equal_expr ( name, ( actual : ExprC ), ( expected : ExprC ) ) : unit =
 (* parse tests *)
 val _ = check_equal_expr ("parse: basic int", parse "3", NumC 3);
 val _ = check_equal_expr ("parse: basic string", parse "\"hi\"", StrC "hi");
-(* val _ = check_equal_expr ("parse: basic id", interp (parse "+"), IdC "hi"); *)
+val _ = check_equal_expr ("parse: basic id", interp (parse "+"), IdC "hi");
 
 (* interp tests *)
 val _ = check_equal ("interp: basic int", interp (NumC 1), NumV 1);
