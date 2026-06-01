@@ -35,7 +35,8 @@ fun top_interp (vebg4 : string) : string =
   serialize (interp (parse vebg4))
 
 (* --------- TESTING --------- *)
-(* NOTE: 'val _ = ' is so we can ignore the return value of check_equal. *)
+(* NOTE: 'val _ = ' is so we can ignore the return value of check_equal.
+* Otherwise it gets printed when program is run. *)
 
 (* Recreating racket testing functions *)
 (* Basic test case . Checks if an actual matches expected and prints pass/fail depending on result. *)
@@ -55,11 +56,18 @@ fun check_equal_str ( name, ( actual : string ), ( expected : string ) ) : unit 
    then "\027[32mPASS\027[0m\n" 
    else "\027[31mFAIL\027[0m\n")));
 
+(* check if two expressions are equal. used for parse tests *)
+fun check_equal_expr ( name, ( actual : ExprC ), ( expected : ExprC ) ) : unit = 
+  (print 
+  ("check_equal_expr: " ^ name ^ ": " ^ 
+  (if expected = actual
+   then "\027[32mPASS\027[0m\n" 
+   else "\027[31mFAIL\027[0m\n")));
+
 (* parse tests *)
-(* wrapped it in interp so that i don't have to write another check_equal for
-* ExprC. If interp is breaking, these will break too.*)
-val _ = check_equal ("parse: basic int", interp (parse "3"), NumV 3);
-val _ = check_equal ("parse: basic string", interp (parse "\"hi\""), StrV "hi");
+val _ = check_equal_expr ("parse: basic int", parse "3", NumC 3);
+val _ = check_equal_expr ("parse: basic string", parse "\"hi\"", StrC "hi");
+(* val _ = check_equal_expr ("parse: basic id", interp (parse "+"), IdC "hi"); *)
 
 (* interp tests *)
 val _ = check_equal ("interp: basic int", interp (NumC 1), NumV 1);
