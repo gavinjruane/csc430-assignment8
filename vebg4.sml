@@ -15,7 +15,7 @@ type Env = (string * Value) list
 val top_env : Env = [
   ("true", BoolV true),
   ("false", BoolV false)
-                    ]
+]
 
 (* Look something up in an environment *)
 fun env_search ((env : Env), (target : string)) : Value = 
@@ -46,7 +46,8 @@ fun interp (( expr : ExprC ), ( env: Env )) : Value =
 fun serialize (value : Value) : string = 
   case value of
        (StrV str) => str
-     | (NumV n) => Int.toString n;
+     | (NumV n) => Int.toString n
+     | (BoolV b) => Bool.toString b
 
 fun top_interp (vebg4 : string) : string =
   serialize (interp ( (parse vebg4), top_env ))
@@ -99,10 +100,13 @@ val _ = check_equal ("interp: false prim", interp ( (IdC "false"), top_env ), Bo
 (* serialize tests *)
 val _ = check_equal_str ("serialize: NumV", serialize (NumV 1), "1");
 val _ = check_equal_str ("serialize: StrV", serialize (StrV "hello"), "hello");
+val _ = check_equal_str ("serialize: BoolV true", serialize (BoolV true), "true");
+val _ = check_equal_str ("serialize: BoolV false", serialize (BoolV false), "false");
 
 (* top interp tests *)
 val _ = check_equal_str ("top_interp: basic int", top_interp "3", "3");
 val _ = check_equal_str ("top_interp: basic string", top_interp "\"test\"", "test");
+val _ = check_equal_str ("top_interp: basic id lookup", top_interp "true", "true");
 
 
 val _ = OS.Process.exit OS.Process.success;
