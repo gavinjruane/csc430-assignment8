@@ -1,7 +1,9 @@
 datatype ExprC =
 IdC of string
                | NumC of int
-               | StrC of string;
+               | StrC of string
+               | LamC of string list * ExprC (* (params, body) *)
+               | AppC of ExprC * ExprC list (* (expr, args) *)
 
 datatype Value =
 NumV of int
@@ -9,23 +11,48 @@ NumV of int
                | BoolV of bool
                | PrimV of string;
 
-(* An environment is a list of ( string, value ) tuples *)
-type Env = (string * Value) list 
-
-val top_env : Env = [
-  ("true", BoolV true),
-  ("false", BoolV false)
-]
-
-(* Look something up in an environment *)
-fun env_search ((env : Env), (target : string)) : Value = 
-  case env of 
-       [] => raise Fail ("VEBG4: Environment unable to find: " ^ target)
-     | (name, value):: rest => if name = target then value else env_search (rest, target)
+(* --------- HELPERS --------- *)
+(* Generic function for searching over a list. *)
+(* The quote syntax is syntax for generics. The double quote means the generic
+* type supports equality comparison.*)
+fun list_search (( elem_list : (''a * 'b) list ), ( target : ''a ), err_msg : string): 'b = 
+  case elem_list of
+       [] => raise Fail err_msg
+     | (key, value)::rest => if key = target then value else list_search (rest, target, err_msg)
 
 (* Invokes the SExp parse function to convert a string into an SExp type *)
 fun str_to_sexp (str : string) : SExp.value list =
   SExpParser.parse (TextIO.openString str)
+
+(* --------- ENVIRONMENT --------- *)
+(* An environment is a list of ( string, value ) tuples *)
+type Env = (string * Value) list 
+
+(* Top level environment *)
+val top_env : Env = [
+  ("true", BoolV true),
+  ("false", BoolV false),
+  ("strlen", PrimV "strlen")
+]
+
+(* Look something up in an environment *)
+fun env_search ((env : Env), (target : string)) : Value = 
+  list_search (env, target, "VEBG4: Unable to find identifier in environment")
+
+(* --------- PRIMITIVES --------- *)
+
+fun prim_strlen (vals : Value list) : Value =
+  case vals of
+       [ StrV s ] => NumV (String.size s)
+     | _ => raise Fail ("VEBG4: invalid arguments passed to strlen primitive")
+
+(* Map a primitive to a function*)
+val prim_tbl : (string * (Value list -> Value)) list = [
+  ("strlen", prim_strlen)
+]
+
+fun prim_search (target : string) : Value list -> Value =
+  list_search (prim_tbl, target, "VEBG4: Unable to find primitive in primitive table")
 
 (* Given concrete syntax as a string, parse into an AST node (ExprC)*)
 fun parse (concrete : string) : ExprC =
@@ -48,6 +75,7 @@ fun serialize (value : Value) : string =
        (StrV str) => str
      | (NumV n) => Int.toString n
      | (BoolV b) => Bool.toString b
+     (* | (PrimV prim_name) => prim_search prim_name *)
 
 fun top_interp (vebg4 : string) : string =
   serialize (interp ( (parse vebg4), top_env ))
