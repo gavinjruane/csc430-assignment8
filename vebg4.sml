@@ -5,10 +5,23 @@ IdC of string
 
 datatype Value =
 NumV of int
-               | StrV of string;
+               | StrV of string
+               | BoolV of bool
+               | PrimV of string;
 
 (* An environment is a list of ( string, value ) tuples *)
 type Env = (string * Value) list 
+
+val top_env : Env = [
+  ("true", BoolV true),
+  ("false", BoolV false)
+                    ]
+
+(* Look something up in an environment *)
+fun env_search ((env : Env), (target : string)) : Value = 
+  case env of 
+       [] => raise Fail ("VEBG4: Environment unable to find: " ^ target)
+     | (name, value):: rest => if name = target then value else env_search (rest, target)
 
 (* Invokes the SExp parse function to convert a string into an SExp type *)
 fun str_to_sexp (str : string) : SExp.value list =
@@ -19,15 +32,15 @@ fun parse (concrete : string) : ExprC =
   case (str_to_sexp concrete) of
        [ SExp.INT n ] => NumC (IntInf.toInt n) (* Parsing an int returns an IntInf.toInt and has to be converted to int. https://www.smlnj.org/doc/smlnj-lib/SExp/str-SExp.html *)
      | [ SExp.STRING s ] => StrC s
-     | [ SExp.SYMBOL id ] => IdC (Atom.toString id) (* Atoms would make hash lookups faster, but just using strings simplifies the code.*)
+     | [ SExp.SYMBOL id ] => IdC (Atom.toString id) (* Atoms would make env lookups faster, but just using strings simplifies the code.*)
      | _ => raise Fail ( "VEBG4: bad syntax: " ^ concrete)
 
 (* Given a VEBG4 expression, evaluate it eagerly into its value *)
-fun interp (expr : ExprC) : Value =
+fun interp (( expr : ExprC ), ( env: Env )) : Value =
   case expr of
   (NumC n) => (NumV n)
   | (StrC s) => (StrV s)
-  | _ => raise Fail ( "VEBG4: Unhandled Expression in interp." ); 
+  | (IdC id) => env_search ( env, id )
   
 (* serialize a value into a printable string *)
 fun serialize (value : Value) : string = 
@@ -36,7 +49,7 @@ fun serialize (value : Value) : string =
      | (NumV n) => Int.toString n;
 
 fun top_interp (vebg4 : string) : string =
-  serialize (interp (parse vebg4))
+  serialize (interp ( (parse vebg4), top_env ))
 
 (* --------- TESTING HELPERS --------- *)
 
@@ -74,10 +87,14 @@ fun check_equal_expr ( name, ( actual : ExprC ), ( expected : ExprC ) ) : unit =
 val _ = check_equal_expr ("parse: basic int", parse "3", NumC 3);
 val _ = check_equal_expr ("parse: basic string", parse "\"hi\"", StrC "hi");
 val _ = check_equal_expr ("parse: basic id", parse "+", IdC "+");
+val _ = check_equal_expr ("parse: true bool", parse "true", IdC "true");
+val _ = check_equal_expr ("parse: false bool", parse "false", IdC "false");
 
 (* interp tests *)
-val _ = check_equal ("interp: basic int", interp (NumC 1), NumV 1);
-val _ = check_equal ("interp: basic string", interp (StrC "hi"), StrV "hi");
+val _ = check_equal ("interp: basic int", interp ( (NumC 1), top_env ), NumV 1);
+val _ = check_equal ("interp: basic string", interp ( (StrC "hi"), top_env ), StrV "hi");
+val _ = check_equal ("interp: true prim", interp ( (IdC "true"), top_env ), BoolV true);
+val _ = check_equal ("interp: false prim", interp ( (IdC "false"), top_env ), BoolV false);
 
 (* serialize tests *)
 val _ = check_equal_str ("serialize: NumV", serialize (NumV 1), "1");
