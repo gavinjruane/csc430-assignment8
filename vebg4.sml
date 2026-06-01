@@ -1,12 +1,10 @@
-datatype ExprC =
-IdC of string
+datatype ExprC = IdC of string
                | NumC of int
                | StrC of string
                | LamC of string list * ExprC (* (params, body) *)
                | AppC of ExprC * ExprC list (* (expr, args) *)
 
-datatype Value =
-NumV of int
+datatype Value = NumV of int
                | StrV of string
                | BoolV of bool
                | PrimV of string;
@@ -45,6 +43,19 @@ fun prim_strlen (vals : Value list) : Value =
   case vals of
        [ StrV s ] => NumV (String.size s)
      | _ => raise Fail ("VEBG4: invalid arguments passed to strlen primitive")
+
+
+(* Get the substring of a string given a desired start index (inclusive) and stop index (exclusive) *)
+(* NOTE: substring in SML is a bit weird; it takes a string, start index, and desired length, not a stop.*)
+fun prim_substring (vals : Value list) : Value =
+case vals of [StrV str, NumV start, NumV stop] => if (start > stop)
+                                   then raise Fail ("VEBG4: stop index is before start index")
+                                   else if (start >= (String.size str))
+                                   then raise Fail ("VEBG4: start index out of range")
+                                   else if (stop > (String.size str))
+                                   then raise Fail ("VEBG4: stop index out of range")
+                                   else StrV (substring (str, start, stop))
+           | _ => raise Fail ("VEBG4: invalid arguments passed to substring primitive");
 
 (* Map a primitive to a function*)
 val prim_tbl : (string * (Value list -> Value)) list = [
@@ -108,6 +119,7 @@ fun check_equal_expr ( name, ( actual : ExprC ), ( expected : ExprC ) ) : unit =
    then "\027[32mPASS\027[0m\n" 
    else "\027[31mFAIL\027[0m\n")));
 
+
 (* --------- TESTING --------- *)
 (* NOTE: 'val _ = ' is so we can ignore the return value of check_equal.
 * Otherwise it gets printed when program is run. *)
@@ -135,6 +147,13 @@ val _ = check_equal_str ("serialize: BoolV false", serialize (BoolV false), "fal
 val _ = check_equal_str ("top_interp: basic int", top_interp "3", "3");
 val _ = check_equal_str ("top_interp: basic string", top_interp "\"test\"", "test");
 val _ = check_equal_str ("top_interp: basic id lookup", top_interp "true", "true");
+
+(* strlen tests *)
+val _ = check_equal ("strlen: basic string", prim_strlen [(StrV "Hello!")], (NumV 6));
+
+(* substring tests *)
+val _ = check_equal ("substring: basic arguments", prim_substring [(StrV "hey!"), (NumV 2), (NumV 2)], (StrV "y!"));
+val _ = check_equal ("substring: simple test", prim_substring [(StrV "Hello!"), (NumV 1), (NumV 3)], (StrV "ell"));
 
 
 val _ = OS.Process.exit OS.Process.success;
