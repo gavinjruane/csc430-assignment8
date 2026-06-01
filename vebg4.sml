@@ -31,6 +31,8 @@ fun serialize (value : Value) : string =
        (StrV str) => str
      | (NumV n) => Int.toString n;
 
+fun top_interp (vebg4 : string) : string =
+  serialize (interp (parse vebg4))
 
 (* --------- TESTING --------- *)
 (* NOTE: 'val _ = ' is so we can ignore the return value of check_equal. *)
@@ -67,7 +69,9 @@ val _ = check_equal ("interp: basic string", interp (StrC "hi"), StrV "hi");
 val _ = check_equal_str ("serialize: NumV", serialize (NumV 1), "1");
 val _ = check_equal_str ("serialize: StrV", serialize (StrV "hello"), "hello");
 
-
+(* top interp tests *)
+val _ = check_equal_str ("top_interp: basic int", top_interp "3", "3");
+val _ = check_equal_str ("top_interp: basic string", top_interp "\"test\"", "test");
 
 
 val _ = OS.Process.exit OS.Process.success;
