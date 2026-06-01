@@ -25,6 +25,15 @@ fun interp (expr : ExprC) : Value =
   | (StrC s) => (StrV s)
   | _ => raise Fail ( "VEBG4: Unhandled Expression in interp." ); 
   
+(* serialize a value into a printable string *)
+fun serialize (value : Value) : string = 
+  case value of
+       (StrV str) => str
+     | (NumV n) => Int.toString n;
+
+
+(* --------- TESTING --------- *)
+(* NOTE: 'val _ = ' is so we can ignore the return value of check_equal. *)
 
 (* Recreating racket testing functions *)
 (* Basic test case . Checks if an actual matches expected and prints pass/fail depending on result. *)
@@ -36,15 +45,29 @@ fun check_equal ( name, ( actual : Value ), ( expected : Value) ) : unit =
    then "\027[32mPASS\027[0m\n" 
    else "\027[31mFAIL\027[0m\n")));
 
-(* interp tests *)
-(* NOTE: 'val _ = ' is so we can ignore the return value of check_equal. *)
-val _ = check_equal ("interp: basic int", interp (NumC 1), NumV 1);
-val _ = check_equal ("interp: basic string", interp (StrC "hi"), StrV "hi");
+(* check if two strings are equal *)
+fun check_equal_str ( name, ( actual : string ), ( expected : string ) ) : unit = 
+  (print 
+  ("check_equal_str: " ^ name ^ ": " ^ 
+  (if expected = actual
+   then "\027[32mPASS\027[0m\n" 
+   else "\027[31mFAIL\027[0m\n")));
 
 (* parse tests *)
 (* wrapped it in interp so that i don't have to write another check_equal for
 * ExprC. If interp is breaking, these will break too.*)
 val _ = check_equal ("parse: basic int", interp (parse "3"), NumV 3);
-val _ = check_equal ("parse: basic string", interp (parse "hi"), NumV 3);
+val _ = check_equal ("parse: basic string", interp (parse "\"hi\""), StrV "hi");
+
+(* interp tests *)
+val _ = check_equal ("interp: basic int", interp (NumC 1), NumV 1);
+val _ = check_equal ("interp: basic string", interp (StrC "hi"), StrV "hi");
+
+(* serialize tests *)
+val _ = check_equal_str ("serialize: NumV", serialize (NumV 1), "1");
+val _ = check_equal_str ("serialize: StrV", serialize (StrV "hello"), "hello");
+
+
+
 
 val _ = OS.Process.exit OS.Process.success;
