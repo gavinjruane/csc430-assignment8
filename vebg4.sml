@@ -19,6 +19,7 @@ fun parse (concrete : string) : ExprC =
   case (str_to_sexp concrete) of
        [ SExp.INT n ] => NumC (IntInf.toInt n) (* Parsing an int returns an IntInf.toInt and has to be converted to int. https://www.smlnj.org/doc/smlnj-lib/SExp/str-SExp.html *)
      | [ SExp.STRING s ] => StrC s
+     | [ SExp.SYMBOL id ] => IdC (Atom.toString id) (* Atoms would make hash lookups faster, but just using strings simplifies the code.*)
      | _ => raise Fail ( "VEBG4: bad syntax: " ^ concrete)
 
 (* Given a VEBG4 expression, evaluate it eagerly into its value *)
@@ -37,9 +38,7 @@ fun serialize (value : Value) : string =
 fun top_interp (vebg4 : string) : string =
   serialize (interp (parse vebg4))
 
-(* --------- TESTING --------- *)
-(* NOTE: 'val _ = ' is so we can ignore the return value of check_equal.
-* Otherwise it gets printed when program is run. *)
+(* --------- TESTING HELPERS --------- *)
 
 (* Recreating racket testing functions *)
 (* Basic test case . Checks if an actual matches expected and prints pass/fail depending on result. *)
@@ -67,10 +66,14 @@ fun check_equal_expr ( name, ( actual : ExprC ), ( expected : ExprC ) ) : unit =
    then "\027[32mPASS\027[0m\n" 
    else "\027[31mFAIL\027[0m\n")));
 
+(* --------- TESTING --------- *)
+(* NOTE: 'val _ = ' is so we can ignore the return value of check_equal.
+* Otherwise it gets printed when program is run. *)
+
 (* parse tests *)
 val _ = check_equal_expr ("parse: basic int", parse "3", NumC 3);
 val _ = check_equal_expr ("parse: basic string", parse "\"hi\"", StrC "hi");
-val _ = check_equal_expr ("parse: basic id", interp (parse "+"), IdC "hi");
+val _ = check_equal_expr ("parse: basic id", parse "+", IdC "+");
 
 (* interp tests *)
 val _ = check_equal ("interp: basic int", interp (NumC 1), NumV 1);
