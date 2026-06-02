@@ -11,6 +11,17 @@ datatype Value = NumV of int
                | CloV of string list * ExprC * (string * Value) list (* (params, body, env) *)
                (* need to figure out recursive types for using Env *)
 
+(* --------- ENVIRONMENT --------- *)
+(* An environment is a list of ( string, value ) tuples *)
+type Env = (string * Value) list
+
+(* Top level environment *)
+val top_env : Env = [
+  ("true", BoolV true),
+  ("false", BoolV false),
+  ("strlen", PrimV "strlen")
+]
+
 (* --------- HELPERS --------- *)
 (* Generic function for searching over a list. *)
 (* The quote syntax is syntax for generics. The double quote means the generic
@@ -24,16 +35,11 @@ fun list_search (( elem_list : (''a * 'b) list ), ( target : ''a ), err_msg : st
 fun str_to_sexp (str : string) : SExp.value list =
   SExpParser.parse (TextIO.openString str)
 
-(* --------- ENVIRONMENT --------- *)
-(* An environment is a list of ( string, value ) tuples *)
-type Env = (string * Value) list
-
-(* Top level environment *)
-val top_env : Env = [
-  ("true", BoolV true),
-  ("false", BoolV false),
-  ("strlen", PrimV "strlen")
-]
+fun sub_args ((params : string list), (args : Value list), (env : Env)): Env =
+  ListPair.foldl (fn ((param : string), (arg : Value), (env : Env)) =>
+                    (param, arg) :: env)
+                  env
+                  (params, args)
 
 (* Look something up in an environment *)
 fun env_search ((env : Env), (target : string)) : Value = 
@@ -78,10 +84,23 @@ fun parse (concrete : string) : ExprC =
 (* Given a VEBG4 expression, evaluate it eagerly into its value *)
 fun interp (( expr : ExprC ), ( env: Env )) : Value =
   case expr of
-  (NumC n) => (NumV n)
-  | (StrC s) => (StrV s)
-  | (IdC id) => env_search ( env, id )
-  | (LamC (params, body)) => (CloV (params, body, env))
+      (NumC n) => (NumV n)
+    | (StrC s) => (StrV s)
+    | (IdC id) => env_search ( env, id )
+    | (LamC (params, body)) => CloV (params, body, env)
+    | (AppC (fn_expr, args)) => 
+        (case interp (fn_expr, env) of
+            (CloV (params, body, clo_env)) =>
+                if length params = length args
+                then interp (body,
+                             sub_args (params,
+                                       map (fn ((arg : ExprC)) => interp (arg, env)) args,
+                                       clo_env))
+                else raise Fail "VEBG4: arity mismatch"
+          (* prim_search and call prim with interped args *)
+          | (PrimV string) => StrV "prim todo"
+          | _ => raise Fail "VEBG4: invalid function application")
+  
   
 (* serialize a value into a printable string *)
 fun serialize (value : Value) : string = 
@@ -143,6 +162,9 @@ val _ = check_equal ("interp: false prim", interp ( (IdC "false"), top_env ), Bo
 val _ = check_equal ("interp: lambda",
                     interp ((LamC (["x", "y"], (StrC "this is the body"))), top_env),
                     (CloV (["x", "y"], (StrC "this is the body"), top_env)))
+val _ = check_equal ("interp: fun application",
+                    interp ((AppC ((LamC (["x"], (IdC "x"))), [(NumC 10)])), top_env),
+                    (NumV 10))
 
 (* serialize tests *)
 val _ = check_equal_str ("serialize: NumV", serialize (NumV 1), "1");
