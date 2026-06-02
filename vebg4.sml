@@ -9,7 +9,9 @@ datatype Value =
 NumV of int
                | StrV of string
                | BoolV of bool
-               | PrimV of string;
+               | PrimV of string
+               | CloV of string list * ExprC * (string * Value) list (* (params, body, env) *)
+               (* need to figure out recursive types for using Env *)
 
 (* --------- HELPERS --------- *)
 (* Generic function for searching over a list. *)
@@ -26,7 +28,7 @@ fun str_to_sexp (str : string) : SExp.value list =
 
 (* --------- ENVIRONMENT --------- *)
 (* An environment is a list of ( string, value ) tuples *)
-type Env = (string * Value) list 
+type Env = (string * Value) list
 
 (* Top level environment *)
 val top_env : Env = [
@@ -68,6 +70,7 @@ fun interp (( expr : ExprC ), ( env: Env )) : Value =
   (NumC n) => (NumV n)
   | (StrC s) => (StrV s)
   | (IdC id) => env_search ( env, id )
+  | (LamC (params, body)) => (CloV (params, body, env))
   
 (* serialize a value into a printable string *)
 fun serialize (value : Value) : string = 
@@ -75,6 +78,7 @@ fun serialize (value : Value) : string =
        (StrV str) => str
      | (NumV n) => Int.toString n
      | (BoolV b) => Bool.toString b
+     | (CloV _) => "#<procedure>"
      (* | (PrimV prim_name) => prim_search prim_name *)
 
 fun top_interp (vebg4 : string) : string =
@@ -124,12 +128,16 @@ val _ = check_equal ("interp: basic int", interp ( (NumC 1), top_env ), NumV 1);
 val _ = check_equal ("interp: basic string", interp ( (StrC "hi"), top_env ), StrV "hi");
 val _ = check_equal ("interp: true prim", interp ( (IdC "true"), top_env ), BoolV true);
 val _ = check_equal ("interp: false prim", interp ( (IdC "false"), top_env ), BoolV false);
+val _ = check_equal ("interp: lambda",
+                    interp ((LamC (["x", "y"], (StrC "this is the body"))), top_env),
+                    (CloV (["x", "y"], (StrC "this is the body"), top_env)))
 
 (* serialize tests *)
 val _ = check_equal_str ("serialize: NumV", serialize (NumV 1), "1");
 val _ = check_equal_str ("serialize: StrV", serialize (StrV "hello"), "hello");
 val _ = check_equal_str ("serialize: BoolV true", serialize (BoolV true), "true");
 val _ = check_equal_str ("serialize: BoolV false", serialize (BoolV false), "false");
+val _ = check_equal_str ("serialize: closure", serialize (CloV (["x", "y"], (StrC "Closure"), top_env)), "#<procedure>")
 
 (* top interp tests *)
 val _ = check_equal_str ("top_interp: basic int", top_interp "3", "3");
