@@ -20,7 +20,10 @@ type Env = (string * Value) list
 val top_env : Env = [
   ("true", BoolV true),
   ("false", BoolV false),
-  ("strlen", PrimV "strlen")
+  ("strlen", PrimV "strlen"),
+  ("substring", PrimV "substring"),
+  ("<=", PrimV "<="),
+  ("equal?", PrimV "equal?")
 ]
 
 (* --------- HELPERS --------- *)
@@ -71,10 +74,20 @@ fun prim_leq (vals : Value list) : Value =
 case vals of [NumV a, NumV b] => BoolV (a <= b)
            | _ => raise Fail ("VEBG4: must provide two arguments of type num");
 
+(* Return whether the two values are equal, provided that they are not primitives or closures *)
+fun prim_equal (vals : Value list) : Value =
+case vals of [StrV s1, StrV s2] => BoolV (s1 = s2)
+           | [NumV n1, NumV n2] => BoolV (n1 = n2)
+           | [BoolV b1, BoolV b2] => BoolV (b1 = b2)
+           | [_, _] => BoolV false
+           | _ => raise Fail "VEBG4: arity mismatch to equal?, must provide 2 arguments"
+
 (* Map a primitive to a function*)
 val prim_tbl : (string * (Value list -> Value)) list = [
   ("strlen", prim_strlen),
-  ("substring", prim_substring)
+  ("substring", prim_substring),
+  ("<=", prim_leq),
+  ("equal?", prim_equal)
 ]
 
 fun prim_search (target : string) : Value list -> Value =
@@ -206,6 +219,15 @@ val _ = check_equal ("substring: simple test", prim_substring [(StrV "Hello!"), 
 val _ = check_equal ("<=: basic arguments", prim_leq [(NumV 3), (NumV 5)], (BoolV true));
 val _ = check_equal ("<=: basic arguments 2", prim_leq [(NumV 5), (NumV 3)], (BoolV false));
 (* val _ = check_equal ("<=: negative arguments", prim_leq [(NumV -10), (NumV 10)], (BoolV true)); *)
+
+(* equal? tests *)
+val _ = check_equal ("equal?: true = true", prim_equal [(BoolV true), (BoolV true)], (BoolV true));
+val _ = check_equal ("equal?: true = false", prim_equal [(BoolV true), (BoolV false)], (BoolV false));
+val _ = check_equal ("equal?: 300 = 300", prim_equal [(NumV 300), (NumV 300)], (BoolV true));
+val _ = check_equal ("equal?: 3 = 300", prim_equal [(NumV 3), (NumV 300)], (BoolV false));
+val _ = check_equal ("equal?: 'hello!' = 'hello!'", prim_equal [(StrV "hello!"), (StrV "hello!")], (BoolV true));
+val _ = check_equal ("equal?: 'hello!' = 'goodbye!'", prim_equal [(StrV "hello!"), (StrV "goodbye!")], (BoolV false));
+val _ = check_equal ("equal?: 'hello!' = <primitive>", prim_equal [(StrV "hello!"), (PrimV "equal?")], (BoolV false));
 
 
 val _ = OS.Process.exit OS.Process.success;
