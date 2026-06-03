@@ -65,9 +65,15 @@ case vals of [StrV str, NumV start, NumV stop] => if (start > stop)
                                    else StrV (substring (str, start, stop))
            | _ => raise Fail ("VEBG4: invalid arguments passed to substring primitive");
 
+(* Return whether A is less than or equal to B (or error if either are not numbers)*)
+fun prim_leq (vals : Value list) : Value =
+case vals of [NumV a, NumV b] => BoolV (a <= b)
+           | _ => raise Fail ("VEBG4: must provide two arguments of type num");
+
 (* Map a primitive to a function*)
 val prim_tbl : (string * (Value list -> Value)) list = [
-  ("strlen", prim_strlen)
+  ("strlen", prim_strlen),
+  ("substring", prim_substring)
 ]
 
 fun prim_search (target : string) : Value list -> Value =
@@ -184,6 +190,11 @@ val _ = check_equal ("strlen: basic string", prim_strlen [(StrV "Hello!")], (Num
 (* substring tests *)
 val _ = check_equal ("substring: basic arguments", prim_substring [(StrV "hey!"), (NumV 2), (NumV 2)], (StrV "y!"));
 val _ = check_equal ("substring: simple test", prim_substring [(StrV "Hello!"), (NumV 1), (NumV 3)], (StrV "ell"));
+
+(* leq tests *)
+val _ = check_equal ("<=: basic arguments", prim_leq [(NumV 3), (NumV 5)], (BoolV true));
+val _ = check_equal ("<=: basic arguments 2", prim_leq [(NumV 5), (NumV 3)], (BoolV false));
+(* val _ = check_equal ("<=: negative arguments", prim_leq [(NumV -10), (NumV 10)], (BoolV true)); *)
 
 
 val _ = OS.Process.exit OS.Process.success;
