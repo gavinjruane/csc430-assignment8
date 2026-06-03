@@ -133,7 +133,7 @@ fun serialize (value : Value) : string =
      | (NumV n) => Int.toString n
      | (BoolV b) => Bool.toString b
      | (CloV _) => "#<procedure>"
-     (* | (PrimV prim_name) => prim_search prim_name *)
+     | (PrimV _) => "#<primop>"
 
 fun top_interp (vebg4 : string) : string =
   serialize (interp ( (parse vebg4), top_env ))
@@ -209,6 +209,7 @@ val _ = check_equal_str ("serialize: StrV", serialize (StrV "hello"), "hello");
 val _ = check_equal_str ("serialize: BoolV true", serialize (BoolV true), "true");
 val _ = check_equal_str ("serialize: BoolV false", serialize (BoolV false), "false");
 val _ = check_equal_str ("serialize: closure", serialize (CloV (["x", "y"], (StrC "Closure"), top_env)), "#<procedure>")
+val _ = check_equal_str ("serialize: primitive", serialize (PrimV "strlen"), "#<primop>")
 
 (* top interp tests *)
 val _ = check_equal_str ("top_interp: basic int", top_interp "3", "3");
