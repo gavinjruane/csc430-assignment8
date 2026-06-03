@@ -122,8 +122,7 @@ fun interp (( expr : ExprC ), ( env: Env )) : Value =
                                        map (fn ((arg : ExprC)) => interp (arg, env)) args,
                                        clo_env))
                 else raise Fail "VEBG4: arity mismatch"
-          (* prim_search and call prim with interped args *)
-          | (PrimV string) => StrV "prim todo"
+          | (PrimV name) => prim_search name (map (fn ((arg : ExprC)) => interp (arg, env)) args)
           | _ => raise Fail "VEBG4: invalid function application")
   
   
@@ -186,11 +185,17 @@ val _ = check_equal ("interp: basic string", interp ( (StrC "hi"), top_env ), St
 val _ = check_equal ("interp: true prim", interp ( (IdC "true"), top_env ), BoolV true);
 val _ = check_equal ("interp: false prim", interp ( (IdC "false"), top_env ), BoolV false);
 val _ = check_equal ("interp: lambda",
-                    interp ((LamC (["x", "y"], (StrC "this is the body"))), top_env),
+                    interp (LamC (["x", "y"], (StrC "this is the body")), top_env),
                     (CloV (["x", "y"], (StrC "this is the body"), top_env)))
-val _ = check_equal ("interp: fun application",
-                    interp ((AppC ((LamC (["x"], (IdC "x"))), [(NumC 10)])), top_env),
+val _ = check_equal ("interp: app lambda with argument",
+                    interp (AppC ((LamC (["x"], (IdC "x"))), [(NumC 10)]), top_env),
                     (NumV 10))
+val _ = check_equal ("interp: app strlen",
+                    interp (AppC ((IdC "strlen"), [(StrC "my string")]), top_env),
+                    (NumV 9))
+val _ = check_equal ("interp: app <=",
+                    interp (AppC ((IdC "<="), [(NumC 1), (NumC 3)]), top_env),
+                    (BoolV true))
 val _ = check_equal ("interp: basic if",
                      interp ( (IfC ((IdC "true"), (NumC 100), (NumC 200))), top_env ),
                      (NumV 100));
