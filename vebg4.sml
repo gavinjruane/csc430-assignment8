@@ -1,7 +1,6 @@
 datatype ExprC = IdC of string
                | NumC of int
                | StrC of string
-               | IfC of ExprC * ExprC * ExprC
                | LamC of string list * ExprC (* (params, body) *)
                | AppC of ExprC * ExprC list (* (expr, args) *)
 
@@ -20,10 +19,7 @@ type Env = (string * Value) list
 val top_env : Env = [
   ("true", BoolV true),
   ("false", BoolV false),
-  ("strlen", PrimV "strlen"),
-  ("substring", PrimV "substring"),
-  ("<=", PrimV "<="),
-  ("equal?", PrimV "equal?")
+  ("strlen", PrimV "strlen")
 ]
 
 (* --------- HELPERS --------- *)
@@ -69,25 +65,9 @@ case vals of [StrV str, NumV start, NumV stop] => if (start > stop)
                                    else StrV (substring (str, start, stop))
            | _ => raise Fail ("VEBG4: invalid arguments passed to substring primitive");
 
-(* Return whether A is less than or equal to B (or error if either are not numbers)*)
-fun prim_leq (vals : Value list) : Value =
-case vals of [NumV a, NumV b] => BoolV (a <= b)
-           | _ => raise Fail ("VEBG4: must provide two arguments of type num");
-
-(* Return whether the two values are equal, provided that they are not primitives or closures *)
-fun prim_equal (vals : Value list) : Value =
-case vals of [StrV s1, StrV s2] => BoolV (s1 = s2)
-           | [NumV n1, NumV n2] => BoolV (n1 = n2)
-           | [BoolV b1, BoolV b2] => BoolV (b1 = b2)
-           | [_, _] => BoolV false
-           | _ => raise Fail "VEBG4: arity mismatch to equal?, must provide 2 arguments"
-
 (* Map a primitive to a function*)
 val prim_tbl : (string * (Value list -> Value)) list = [
-  ("strlen", prim_strlen),
-  ("substring", prim_substring),
-  ("<=", prim_leq),
-  ("equal?", prim_equal)
+  ("strlen", prim_strlen)
 ]
 
 fun prim_search (target : string) : Value list -> Value =
@@ -99,9 +79,6 @@ fun parse (concrete : string) : ExprC =
        [ SExp.INT n ] => NumC (IntInf.toInt n) (* Parsing an int returns an IntInf.toInt and has to be converted to int. https://www.smlnj.org/doc/smlnj-lib/SExp/str-SExp.html *)
      | [ SExp.STRING s ] => StrC s
      | [ SExp.SYMBOL id ] => IdC (Atom.toString id) (* Atoms would make env lookups faster, but just using strings simplifies the code.*)
-     (* | [ SExp.LIST [ SExp.SYMBOL "if", SExp.value cond, SExp.value iftrue, SExp.value iffalse ] ] => IfC (parse cond, parse iftrue, parse iffalse) *)
-     (* | SExp.LIST [ SExp.SYMBOL (Atom.atom "fn"), SExp.LIST params, SExp.SYMBOL (Atom.atom "->"), body ] =>
-          LamC (["x"], StrC "lol") *)
      | _ => raise Fail ( "VEBG4: bad syntax: " ^ concrete)
 
 (* Given a VEBG4 expression, evaluate it eagerly into its value *)
@@ -124,7 +101,8 @@ fun interp (( expr : ExprC ), ( env: Env )) : Value =
                                        map (fn ((arg : ExprC)) => interp (arg, env)) args,
                                        clo_env))
                 else raise Fail "VEBG4: arity mismatch"
-          | (PrimV name) => prim_search name (map (fn ((arg : ExprC)) => interp (arg, env)) args)
+          (* prim_search and call prim with interped args *)
+          | (PrimV string) => StrV "prim todo"
           | _ => raise Fail "VEBG4: invalid function application")
   
   
@@ -135,7 +113,7 @@ fun serialize (value : Value) : string =
      | (NumV n) => Int.toString n
      | (BoolV b) => Bool.toString b
      | (CloV _) => "#<procedure>"
-     | (PrimV _) => "#<primop>"
+     (* | (PrimV prim_name) => prim_search prim_name *)
 
 fun top_interp (vebg4 : string) : string =
   serialize (interp ( (parse vebg4), top_env ))
@@ -179,10 +157,6 @@ val _ = check_equal_expr ("parse: basic string", parse "\"hi\"", StrC "hi");
 val _ = check_equal_expr ("parse: basic id", parse "+", IdC "+");
 val _ = check_equal_expr ("parse: true bool", parse "true", IdC "true");
 val _ = check_equal_expr ("parse: false bool", parse "false", IdC "false");
-val _ = check_equal_expr ("parse: if", parse "(if true 100 200)" IfC ((IdC "true"), (NumC 100), (NumC 200)));
-(* val _ = check_equal_expr ("parse: lambda fun",
-                          parse "fn (x) -> x",
-                          LamC (["x"], IdC "x")) *)
 
 (* interp tests *)
 val _ = check_equal ("interp: basic int", interp ( (NumC 1), top_env ), NumV 1);
@@ -190,23 +164,11 @@ val _ = check_equal ("interp: basic string", interp ( (StrC "hi"), top_env ), St
 val _ = check_equal ("interp: true prim", interp ( (IdC "true"), top_env ), BoolV true);
 val _ = check_equal ("interp: false prim", interp ( (IdC "false"), top_env ), BoolV false);
 val _ = check_equal ("interp: lambda",
-                    interp (LamC (["x", "y"], (StrC "this is the body")), top_env),
+                    interp ((LamC (["x", "y"], (StrC "this is the body"))), top_env),
                     (CloV (["x", "y"], (StrC "this is the body"), top_env)))
-val _ = check_equal ("interp: app lambda with argument",
-                    interp (AppC ((LamC (["x"], (IdC "x"))), [(NumC 10)]), top_env),
+val _ = check_equal ("interp: fun application",
+                    interp ((AppC ((LamC (["x"], (IdC "x"))), [(NumC 10)])), top_env),
                     (NumV 10))
-val _ = check_equal ("interp: app strlen",
-                    interp (AppC ((IdC "strlen"), [(StrC "my string")]), top_env),
-                    (NumV 9))
-val _ = check_equal ("interp: app <=",
-                    interp (AppC ((IdC "<="), [(NumC 1), (NumC 3)]), top_env),
-                    (BoolV true))
-val _ = check_equal ("interp: basic if",
-                     interp ( (IfC ((IdC "true"), (NumC 100), (NumC 200))), top_env ),
-                     (NumV 100));
-val _ = check_equal ("interp: basic if 2",
-                     interp ( (IfC ((IdC "false"), (NumC 100), (NumC 200))), top_env ),
-                     (NumV 200));
 
 (* serialize tests *)
 val _ = check_equal_str ("serialize: NumV", serialize (NumV 1), "1");
@@ -214,12 +176,12 @@ val _ = check_equal_str ("serialize: StrV", serialize (StrV "hello"), "hello");
 val _ = check_equal_str ("serialize: BoolV true", serialize (BoolV true), "true");
 val _ = check_equal_str ("serialize: BoolV false", serialize (BoolV false), "false");
 val _ = check_equal_str ("serialize: closure", serialize (CloV (["x", "y"], (StrC "Closure"), top_env)), "#<procedure>")
-val _ = check_equal_str ("serialize: primitive", serialize (PrimV "strlen"), "#<primop>")
 
 (* top interp tests *)
 val _ = check_equal_str ("top_interp: basic int", top_interp "3", "3");
 val _ = check_equal_str ("top_interp: basic string", top_interp "\"test\"", "test");
 val _ = check_equal_str ("top_interp: basic id lookup", top_interp "true", "true");
+val _ = check_equal_str ("top_interp: ")
 
 (* strlen tests *)
 val _ = check_equal ("strlen: basic string", prim_strlen [(StrV "Hello!")], (NumV 6));
@@ -228,19 +190,7 @@ val _ = check_equal ("strlen: basic string", prim_strlen [(StrV "Hello!")], (Num
 val _ = check_equal ("substring: basic arguments", prim_substring [(StrV "hey!"), (NumV 2), (NumV 2)], (StrV "y!"));
 val _ = check_equal ("substring: simple test", prim_substring [(StrV "Hello!"), (NumV 1), (NumV 3)], (StrV "ell"));
 
-(* leq tests *)
-val _ = check_equal ("<=: basic arguments", prim_leq [(NumV 3), (NumV 5)], (BoolV true));
-val _ = check_equal ("<=: basic arguments 2", prim_leq [(NumV 5), (NumV 3)], (BoolV false));
-(* val _ = check_equal ("<=: negative arguments", prim_leq [(NumV -10), (NumV 10)], (BoolV true)); *)
-
-(* equal? tests *)
-val _ = check_equal ("equal?: true = true", prim_equal [(BoolV true), (BoolV true)], (BoolV true));
-val _ = check_equal ("equal?: true = false", prim_equal [(BoolV true), (BoolV false)], (BoolV false));
-val _ = check_equal ("equal?: 300 = 300", prim_equal [(NumV 300), (NumV 300)], (BoolV true));
-val _ = check_equal ("equal?: 3 = 300", prim_equal [(NumV 3), (NumV 300)], (BoolV false));
-val _ = check_equal ("equal?: 'hello!' = 'hello!'", prim_equal [(StrV "hello!"), (StrV "hello!")], (BoolV true));
-val _ = check_equal ("equal?: 'hello!' = 'goodbye!'", prim_equal [(StrV "hello!"), (StrV "goodbye!")], (BoolV false));
-val _ = check_equal ("equal?: 'hello!' = <primitive>", prim_equal [(StrV "hello!"), (PrimV "equal?")], (BoolV false));
-
 
 val _ = OS.Process.exit OS.Process.success;
+
+
