@@ -1,6 +1,7 @@
 datatype ExprC = IdC of string
                | NumC of int
                | StrC of string
+               | IfC of ExprC * ExprC * ExprC
                | LamC of string list * ExprC (* (params, body) *)
                | AppC of ExprC * ExprC list (* (expr, args) *)
 
@@ -93,6 +94,10 @@ fun interp (( expr : ExprC ), ( env: Env )) : Value =
       (NumC n) => (NumV n)
     | (StrC s) => (StrV s)
     | (IdC id) => env_search ( env, id )
+    | (IfC (cond, iftrue, iffalse)) =>
+        (case interp (cond, env) of (BoolV true) => interp (iftrue, env)
+                                  | (BoolV false) => interp (iffalse, env)
+                                  | _ => raise Fail "VEBG4: condition did not return a bool")
     | (LamC (params, body)) => CloV (params, body, env)
     | (AppC (fn_expr, args)) => 
         (case interp (fn_expr, env) of
@@ -171,6 +176,12 @@ val _ = check_equal ("interp: lambda",
 val _ = check_equal ("interp: fun application",
                     interp ((AppC ((LamC (["x"], (IdC "x"))), [(NumC 10)])), top_env),
                     (NumV 10))
+val _ = check_equal ("interp: basic if",
+                     interp ( (IfC ((IdC "true"), (NumC 100), (NumC 200))), top_env ),
+                     (NumV 100));
+val _ = check_equal ("interp: basic if 2",
+                     interp ( (IfC ((IdC "false"), (NumC 100), (NumC 200))), top_env ),
+                     (NumV 200));
 
 (* serialize tests *)
 val _ = check_equal_str ("serialize: NumV", serialize (NumV 1), "1");
