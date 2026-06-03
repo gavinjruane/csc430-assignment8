@@ -99,6 +99,7 @@ fun parse (concrete : string) : ExprC =
        [ SExp.INT n ] => NumC (IntInf.toInt n) (* Parsing an int returns an IntInf.toInt and has to be converted to int. https://www.smlnj.org/doc/smlnj-lib/SExp/str-SExp.html *)
      | [ SExp.STRING s ] => StrC s
      | [ SExp.SYMBOL id ] => IdC (Atom.toString id) (* Atoms would make env lookups faster, but just using strings simplifies the code.*)
+     (* | [ SExp.LIST [ SExp.SYMBOL "if", SExp.value cond, SExp.value iftrue, SExp.value iffalse ] ] => IfC (parse cond, parse iftrue, parse iffalse) *)
      | _ => raise Fail ( "VEBG4: bad syntax: " ^ concrete)
 
 (* Given a VEBG4 expression, evaluate it eagerly into its value *)
@@ -177,6 +178,7 @@ val _ = check_equal_expr ("parse: basic string", parse "\"hi\"", StrC "hi");
 val _ = check_equal_expr ("parse: basic id", parse "+", IdC "+");
 val _ = check_equal_expr ("parse: true bool", parse "true", IdC "true");
 val _ = check_equal_expr ("parse: false bool", parse "false", IdC "false");
+val _ = check_equal_expr ("parse: if", parse "(if true 100 200)" IfC ((IdC "true"), (NumC 100), (NumC 200)));
 
 (* interp tests *)
 val _ = check_equal ("interp: basic int", interp ( (NumC 1), top_env ), NumV 1);
