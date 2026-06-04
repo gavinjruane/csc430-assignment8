@@ -23,7 +23,11 @@ val top_env : Env = [
   ("strlen", PrimV "strlen"),
   ("substring", PrimV "substring"),
   ("<=", PrimV "<="),
-  ("equal?", PrimV "equal?")
+  ("equal?", PrimV "equal?"), 
+  ("+", PrimV "+"),
+  ("-", PrimV "-"),
+  ("*", PrimV "*"),
+  ("/", PrimV "/")
 ]
 
 (* --------- HELPERS --------- *)
@@ -82,27 +86,88 @@ case vals of [StrV s1, StrV s2] => BoolV (s1 = s2)
            | [_, _] => BoolV false
            | _ => raise Fail "VEBG4: arity mismatch to equal?, must provide 2 arguments"
 
+(* Return sum of two args. *)
+fun plus (vals: Value list) : Value = 
+case vals of [NumV v1, NumV v2] => NumV (v1 + v2)
+           | [_, _] => raise Fail ("VEBG4: invalid arguments passed to plus primitive")
+           | [_] => raise Fail ("VEBG4: arity mismatch to plus, must provide 2 arguments")
+
+(* Subtraction: v1 - v2 . *)
+fun minus (vals: Value list) : Value = 
+case vals of [NumV v1, NumV v2] => NumV (v1 - v2)
+           | [_, _] => raise Fail ("VEBG4: invalid arguments passed to minus primitive")
+           | [_] => raise Fail ("VEBG4: arity mismatch to minus, must provide 2 arguments")
+
+(* Return product of two args. *)
+fun multiply (vals: Value list) : Value = 
+case vals of [NumV v1, NumV v2] => NumV (v1 * v2)
+           | [_, _] => raise Fail ("VEBG4: invalid arguments passed to multiply primitive")
+           | [_] => raise Fail ("VEBG4: arity mismatch to multiply, must provide 2 arguments")
+
+(* Divide v1 by v2 and return quotient. *)
+fun divide (vals: Value list) : Value = 
+case vals of [NumV v1, NumV v2] => if v2 <> 0 then NumV (v1 div v2) else raise Fail ("VEBG4: can not divide by 0")  
+           | [_, _] => raise Fail ("VEBG4: invalid arguments passed to divide primitive")
+           | [_] => raise Fail ("VEBG4: arity mismatch to divide, must provide 2 arguments")         
+
 (* Map a primitive to a function*)
 val prim_tbl : (string * (Value list -> Value)) list = [
   ("strlen", prim_strlen),
   ("substring", prim_substring),
   ("<=", prim_leq),
-  ("equal?", prim_equal)
+  ("equal?", prim_equal), 
+  ("+", plus), 
+  ("-", minus), 
+  ("*", multiply),
+  ("/", divide)
 ]
 
 fun prim_search (target : string) : Value list -> Value =
   list_search (prim_tbl, target, "VEBG4: Unable to find primitive in primitive table")
 
-(* Given concrete syntax as a string, parse into an AST node (ExprC)*)
-fun parse (concrete : string) : ExprC =
-  case (str_to_sexp concrete) of
+(* Parsing Helper: Parse the given list of SExp values.*)
+(* Note that values recursively passed to this function must artifically be made into lists*)
+fun parse_sexp (concrete_sexp : SExp.value list) : ExprC =
+  case concrete_sexp of
        [ SExp.INT n ] => NumC (IntInf.toInt n) (* Parsing an int returns an IntInf.toInt and has to be converted to int. https://www.smlnj.org/doc/smlnj-lib/SExp/str-SExp.html *)
      | [ SExp.STRING s ] => StrC s
      | [ SExp.SYMBOL id ] => IdC (Atom.toString id) (* Atoms would make env lookups faster, but just using strings simplifies the code.*)
-     (* | [ SExp.LIST [ SExp.SYMBOL "if", SExp.value cond, SExp.value iftrue, SExp.value iffalse ] ] => IfC (parse cond, parse iftrue, parse iffalse) *)
-     (* | SExp.LIST [ SExp.SYMBOL (Atom.atom "fn"), SExp.LIST params, SExp.SYMBOL (Atom.atom "->"), body ] =>
-          LamC (["x"], StrC "lol") *)
-     | _ => raise Fail ( "VEBG4: bad syntax: " ^ concrete)
+     
+     | [SExp.LIST [SExp.SYMBOL f, 
+                  SExp.LIST params, 
+                  SExp.SYMBOL arrow, 
+                  body] ] 
+        =>
+        if Atom.toString f = "fn" andalso Atom.toString arrow = "->"
+          then LamC(
+                    map (fn (SExp.SYMBOL id) => Atom.toString id
+                        | _ => raise Fail ("parameter must be symbol"))
+                        params,
+                    parse_sexp [body])
+          else raise Fail ("VEBG4: invalid fn syntax")
+
+     | [ SExp.LIST [SExp.SYMBOL sym,
+                    cond,
+                    iftrue, 
+                    iffalse] ]
+        =>
+        if Atom.toString sym = "if"
+          then IfC(parse_sexp [cond], parse_sexp [iftrue], parse_sexp [iffalse])
+          else raise Fail ("VEBG4: invalid if syntax")
+
+     | [SExp.LIST (f :: args)]
+        =>
+        AppC (parse_sexp [f], 
+              map (fn arg => parse_sexp [arg])
+                    args) 
+
+     | _ => raise Fail ( "VEBG4: bad syntax ")
+
+              
+
+(* Given concrete syntax as a string, parse into an AST node by passing off to parse_sexp (ExprC)*)
+fun parse (concrete : string) : ExprC =
+  parse_sexp ((str_to_sexp concrete))
 
 (* Given a VEBG4 expression, evaluate it eagerly into its value *)
 fun interp (( expr : ExprC ), ( env: Env )) : Value =
@@ -173,16 +238,48 @@ fun check_equal_expr ( name, ( actual : ExprC ), ( expected : ExprC ) ) : unit =
 (* NOTE: 'val _ = ' is so we can ignore the return value of check_equal.
 * Otherwise it gets printed when program is run. *)
 
+(* top interp tests *)
+val _ = check_equal_str ("top-interp: simple addition", top_interp "(+ 3 1)", "4");
+val _ = check_equal_str ("top-interp: nested arithmetic + if + comparison",
+                        top_interp "(if (<= (+ 2 1) (* 2 3)) (+ 10 (* 2 3)) (- 50 5))",
+                        "16"
+                      );
+val _ = check_equal_str ("top-interp: if + equality + arithmetic mix",
+                          top_interp "(if (equal? (+ 1 2) 3) \"ok\" \"fail\")",
+                          "ok"
+                        );
+val _ = check_equal_str ("top-interp: nested function calls",
+                        top_interp "(+ (* 2 3) (- 10 4))",
+                        "12"
+                      );
+
+
 (* parse tests *)
 val _ = check_equal_expr ("parse: basic int", parse "3", NumC 3);
 val _ = check_equal_expr ("parse: basic string", parse "\"hi\"", StrC "hi");
 val _ = check_equal_expr ("parse: basic id", parse "+", IdC "+");
 val _ = check_equal_expr ("parse: true bool", parse "true", IdC "true");
 val _ = check_equal_expr ("parse: false bool", parse "false", IdC "false");
-(* val _ = check_equal_expr ("parse: if", parse "(if true 100 200)" IfC ((IdC "true"), (NumC 100), (NumC 200))); *)
-(* val _ = check_equal_expr ("parse: lambda fun",
-                          parse "fn (x) -> x",
-                          LamC (["x"], IdC "x")) *)
+val _ = check_equal_expr ("parse: if", parse "(if true 100 200)", IfC ((IdC "true"), (NumC 100), (NumC 200)));
+val _ = check_equal_expr ("parse: lambda fun w one arg",
+                          parse "(fn (x) -> x)",
+                          LamC (["x"], IdC "x"))
+val _ = check_equal_expr ( "parse: simple lambda with 2 args",
+                          parse "(fn (x y) -> x)",
+                          LamC (["x", "y"], IdC "x")
+                        );                          
+val _ = check_equal_expr ( "parse: lambda with 2 args",
+                          parse "(fn (x y) -> (if true x y))",
+                          LamC(
+                            ["x","y"],
+                            IfC ((IdC "true"), (IdC "x"), (IdC "y"))
+                          )
+                        );                      
+val _ = check_equal_expr ("parse: AppC (1 + 2)",
+                          parse "(+ 1 2)",
+                          AppC (IdC "+",
+                                [NumC 1, NumC 2]))
+                             
 
 (* interp tests *)
 val _ = check_equal ("interp: basic int", interp ( (NumC 1), top_env ), NumV 1);
@@ -207,6 +304,18 @@ val _ = check_equal ("interp: basic if",
 val _ = check_equal ("interp: basic if 2",
                      interp ( (IfC ((IdC "false"), (NumC 100), (NumC 200))), top_env ),
                      (NumV 200));
+val _ = check_equal ("plus: 1 + 2 = 3",
+                     interp (AppC ((IdC "+"), [(NumC 1), (NumC 2)]), top_env),
+                     (NumV 3));     
+val _ = check_equal ("minus: 3 - 2 = 1",
+                     interp (AppC ((IdC "-"), [(NumC 3), (NumC 2)]), top_env),
+                     (NumV 1));                                 
+val _ = check_equal ("multiply: 5 + 4 = 20",
+                     interp (AppC ((IdC "*"), [(NumC 5), (NumC 4)]), top_env),
+                     (NumV 20));   
+val _ = check_equal ("divide: 8 / 4 = 2",
+                     interp (AppC ((IdC "/"), [(NumC 8), (NumC 4)]), top_env),
+                     (NumV 2));                                        
 
 (* serialize tests *)
 val _ = check_equal_str ("serialize: NumV", serialize (NumV 1), "1");
@@ -241,6 +350,18 @@ val _ = check_equal ("equal?: 3 = 300", prim_equal [(NumV 3), (NumV 300)], (Bool
 val _ = check_equal ("equal?: 'hello!' = 'hello!'", prim_equal [(StrV "hello!"), (StrV "hello!")], (BoolV true));
 val _ = check_equal ("equal?: 'hello!' = 'goodbye!'", prim_equal [(StrV "hello!"), (StrV "goodbye!")], (BoolV false));
 val _ = check_equal ("equal?: 'hello!' = <primitive>", prim_equal [(StrV "hello!"), (PrimV "equal?")], (BoolV false));
+
+(* plus tests *)
+val _ = check_equal ("plus: 1 + 2 = 3", plus [(NumV 1), (NumV 2)], (NumV 3));
+
+(* minus tests *)
+val _ = check_equal ("plus: 3 - 2 = 1", minus [(NumV 3), (NumV 2)], (NumV 1));
+
+(* multiply tests *)
+val _ = check_equal ("plus: 5 * 4 = 20", multiply [(NumV 5), (NumV 4)], (NumV 20));
+
+(* divide tests *)
+val _ = check_equal ("plus: 8 / 4 = 2", divide [(NumV 8), (NumV 4)], (NumV 2));
 
 
 val _ = OS.Process.exit OS.Process.success;
